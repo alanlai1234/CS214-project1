@@ -1,5 +1,6 @@
 Alan Lai, kl1210 
 Cheng Chan Lee, cl1814
+
 Design Notes
 ---
 We set the header as 8 byte with two int variables prev_size and size. Prev_size is the size of the chunk before it, so that its easy to check free coalescing. Size can be negative and positive, where <=0 means that this block is unused, >0 means this block is used, and abs(size) is the actual size of the chunk. We specifically made 0 as unused because then if the chunk after it is freed it can coalesce with it and gain 8 more bytes(the header). 
