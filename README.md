@@ -1,5 +1,4 @@
-Alan Lai, kl1210 
-Cheng Chan Lee, cl1814
+Alan Lai, kl1210,Cheng Chan Lee, cl1814
 
 Design Notes
 ---
