@@ -1,47 +1,29 @@
-set a global init variable, true means initialized, false means not
-set a global char pointer, null when not initialized
+Alan Lai, kl1210
 
-header:
-    * 8 byte
-    * a pointer pointing to the ending of this chunk, is null means not allocated
+Design Notes
+---
+We set the header as 8 byte with two int variables prev_size and size. Prev_size is the size of the chunk before it, so that its easy to check free coalescing. Size can be negative and positive, where <=0 means that this block is unused, >0 means this block is used, and abs(size) is the actual size of the chunk. We specifically made 0 as unused because then if the chunk after it is freed it can coalesce with it and gain 8 more bytes(the header). 
 
-metadata:
-	 * status
-	 * length(only payload)
-	 * next
-	 * previous
-
-malloc:
-   * if not init, call malloc to create memory to the global char pointer
-   * allocate_size = header size + smallest multiple greater equal then requested amount
-   * find chunk: //這個部分有空聊聊
-       * set a integer prev = 0 indicating the last unallocated position
-       * loop, increment every 8 bytes 
-           * if current chunk is allocated:
-               * if from prev to current chunk has size >= allocate_size, then allocate from prev to current chunk to the client, return
-               * otherwise jump to the end via the header pointer, and set prev as the next chunk of the end
-           * if current chunk is not allocated, and if from prev to current chunk has size >= allocate_size, then allocate from prev to current chunk to the client, then return
-
-    * return NULL, print error
-
-	          
-Free:
-    *change status to unused
-	 *if .next is unused as well then 
-	 		* change length equal (the original length + the next metadata + the next payload)
-	 		* change .next to .next.next
-	 *if .prev is unused then 
-	 		* change .prev.length
-			* change .prev.next
-check:
-	 *no chunk overlaps
-	 *no continuous empty trunk
-	 *no chunk go over the limits
-
-
-目前寫的內容需要調整的地方 by.gpt **我們有空討論一下喔
-
-8-byte header，只存結尾指標，NULL 表示未配置              	跟下面四欄位 metadata 是不同方案，不能直接混著使用
-status / length / next / previous	                  如果選這個方案，就用這份 metadata 的實際大小規劃 header
-初始化時呼叫 malloc() 建立 heap	                        這份作業要求使用老師提供的固定 union 陣列
-額外的 global char pointer	                           老師只特別允許額外的 static int 初始化旗標；走訪用的指標可以放在函式內作為區域變數
+Requirements
+---
+1.  Requirements: malloc reserve free chunks, leak detection
+    Method: When successful, malloc() returns a pointer to an object that does not overlap with any other allocated object. Then when program finishes should report memory leak because we intentionally not free it.
+    Test: Allocate two large arrays, say both with 200 elements. Then fill the first one with 200-399, the second one with 0-199. Then check if the numbers are still intact. Don't free the two chunks.
+2.  Requirements: Coalesce free chunks, free dallocates
+    Method: All the allocation should be successful, where the middle two chunks are freed, and are merged so that a chunk can fill the gap.
+    Test: Allocate four chunks that equally fills the heap, free the middle two, then allocate one that is the size of the two chunks freed.
+3.  Requirements: Align by 8 bytes, malloc detect requests that exceeds max heap size
+    Method: First allocation should fill the heap. Then the int allocated at the end should return null since there's no space left.
+    Test: Allocate a chunk that is 4 bytes smaller then the max heap size, then allocate an int, should return null.
+4.  Requirements: must not free addresses not from malloc
+    Method: Should report error and exit.
+    Test: Declare a int variable and call free on it.
+5.  Requirements: must not free addresses not at the start of a chunk
+    Method: Should report error and exit.
+    Test: Allocate a chunk, minus 8 to the pointer and call free on it.
+6.  Requirements: calling free a second time on the same address
+    Method: Should report error and exit.
+    Test: Allocate a chunk, free it two consecutive times.
+7.  Requirements: a space of 8 byte is a chunk of size 0, unused, where it can be coalesced later.
+    Method: Everything should allocate succesfully and fill the heap.
+    Test: Allocate two chunks of the size of half the max size, then free the first one. Then allocate a chunk of size of half the max size minus one header size, now free the second chunk allocated originally, then you should be able to allocate a chunk of size of half the max size plus a header size.

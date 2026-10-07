@@ -90,7 +90,7 @@ void *mymalloc(size_t size, char *file, int line)
 
 //myfree
 void free_error(char *file, int line){
-	fprintf(stderr, "free: Inappropriate pointer (%s:%d)", file, line);
+	fprintf(stderr, "free: Inappropriate pointer (%s:%d)\n", file, line);
 	exit(2);
 }
 
@@ -137,7 +137,9 @@ void myfree(void *ptr, char *file, int line){
 
 	//change next next chunk's prev_size
 	Header *nnext = (Header*)((char*)header + sizeof(Header) + header->size);
-	nnext->prev_size = header->size;
+	if((char*)nnext < heap.bytes+MEM_SIZE){
+		nnext->prev_size = header->size;
+	}
 
 	header->size = -header->size;
 }
